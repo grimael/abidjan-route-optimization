@@ -59,8 +59,17 @@ def main() -> None:
     print(f"AG 5 graines : {min(finals):.0f} a {max(finals):.0f} s | optimum {opt:.0f} s")
 
     # 3. CVRP sur les mêmes points, demandes déterministes
-    rng = np.random.default_rng(3)
-    demand = np.concatenate([[0.0], rng.integers(1, 5, inst.n - 1).astype(float)])
+    # demande proportionnelle a la population du quartier (RGPH 2021) si disponible
+    pts = inst.meta.get("points") or []
+    pops = [p.get("population") for p in pts]
+    if len(pops) == inst.n and all(isinstance(v, int) and v > 0 for v in pops[1:]):
+        raw = np.array([0.0] + [p / max(min(pops[1:]), 1) for p in pops[1:]])
+        demand = np.round(np.clip(raw * 4, 1, 5)).astype(float)
+        demand[0] = 0.0
+        print("demandes derivees de la population RGPH 2021")
+    else:
+        rng = np.random.default_rng(3)
+        demand = np.concatenate([[0.0], rng.integers(1, 5, inst.n - 1).astype(float)])
     cv = Instance(
         name="abidjan_cvrp", lat=inst.lat, lon=inst.lon, matrix=inst.matrix,
         demand=demand, capacity=14.0, cost_unit=UNIT, source=inst.source, meta=inst.meta,

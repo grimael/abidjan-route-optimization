@@ -91,7 +91,10 @@ def overpass_quartiers(limit: int) -> list[dict]:
                 if not name or name in seen or "lat" not in el:
                     continue
                 seen.add(name)
-                out.append({"name": name, "lat": el["lat"], "lon": el["lon"]})
+                point = {"name": name, "lat": el["lat"], "lon": el["lon"]}
+                if tags.get("population", "").isdigit():
+                    point["population"] = int(tags["population"])
+                out.append(point)
                 if len(out) >= limit:
                     break
             if out:
