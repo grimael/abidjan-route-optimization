@@ -6,11 +6,11 @@ Ce projet ne simule plus des villes au hasard : il travaille sur les **temps de 
 
 | | |
 |---|---|
-| **Problème** | TSP et **CVRP** (capacité), tournées multi-véhicules |
+| **Problème** | TSP, **CVRP** (capacité) et **VRPTW** (fenêtres de temps) |
 | **Données** | OpenStreetMap + OSRM, chefs-lieux des 12 communes d'Abidjan |
 | **Métrique** | Durée de trajet (secondes), matrice **asymétrique** |
-| **Solveurs** | Plus proche voisin · 2-opt/Or-opt · AG mémétique · Clarke-Wright · ALNS · Held-Karp (optimum) |
-| **Tests** | 10 tests, exécutables sans dépendance lourde |
+| **Solveurs** | Plus proche voisin · 2-opt/Or-opt · AG mémétique · Clarke-Wright · ALNS · insertion Solomon · Held-Karp (optimum) |
+| **Tests** | 13 tests, exécutables sans dépendance lourde |
 
 ## Pourquoi ce projet n'est pas un exercice
 
@@ -63,6 +63,7 @@ src/vrp/
     heuristics.py      # plus proche voisin, 2-opt, Or-opt, descente
     ga.py              # AG mémétique (OX, inversion, élitisme)
     cvrp.py            # Clarke-Wright, 2-opt inter-tournées, ALNS
+    vrptw.py           # insertion Solomon, ALNS avec fenêtres de temps
   viz/
     map.py             # carte Leaflet autonome (aucune dépendance)
 scripts/
@@ -70,7 +71,8 @@ scripts/
   benchmark.py         # comparaison des solveurs
   make_map.py          # carte HTML des tournées
 notebooks/
-  01_baseline_ga.ipynb # notebook d'origine, conservé pour l'historique
+  01_baseline_ga.ipynb       # notebook d'origine, conservé pour l'historique
+  02_ortools_reference.ipynb # comparaison à OR-Tools (à lancer dans Colab)
 docs/
   methodes_selection.md # théorie des cinq opérateurs de sélection
 ```
@@ -88,7 +90,7 @@ python scripts/benchmark.py --instance data/instances/abidjan_communes_12.json -
 - Les chefs-lieux sont des points approximatifs : ce sont des centres de commune, pas des adresses de clients.
 - OSRM public applique des vitesses moyennes par type de voie, pas le trafic réel d'Abidjan à 17 h.
 - Held-Karp plafonne à 16 points ; au-delà, la référence devient OR-Tools (à exécuter dans Colab, l'installation locale étant bloquée sur certaines machines).
-- Les fenêtres de temps (VRPTW) restent à implémenter : le solveur gère la capacité, pas les horaires.
+- Le solveur gère la capacité et les fenêtres de temps, mais pas encore une flotte hétérogène ni les pauses obligatoires.
 
 ## Sources et licences
 

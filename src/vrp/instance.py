@@ -49,6 +49,8 @@ class Instance:
     lon: np.ndarray
     demand: np.ndarray | None = None
     capacity: float | None = None
+    tw: np.ndarray | None = None
+    service: np.ndarray | None = None
     matrix: np.ndarray | None = None
     cost_unit: str = "km"
     source: str = ""
@@ -68,6 +70,19 @@ class Instance:
             if self.matrix.shape != (len(self.lat), len(self.lat)):
                 raise ValueError("matrice de taille incompatible avec les points")
         np.fill_diagonal(self.matrix, 0.0)
+        if self.tw is not None:
+            self.tw = np.asarray(self.tw, dtype=float)
+            if self.tw.shape != (self.n, 2):
+                raise ValueError("tw doit être de forme (n, 2)")
+        if self.service is not None:
+            self.service = np.asarray(self.service, dtype=float)
+            if self.service.shape != (self.n,):
+                raise ValueError("service doit être de forme (n,)")
+
+    @property
+    def has_time_windows(self) -> bool:
+        return self.tw is not None
+
 
     @property
     def n(self) -> int:
@@ -107,3 +122,30 @@ class Instance:
         demand = np.concatenate([[0.0], rng.integers(1, 6, n - 1).astype(float)])
         return cls(name=name, lat=lat, lon=lon, demand=demand, capacity=capacity,
                    source="synthétique (seed=%d)" % seed)
+
+    @classmethod
+    def random_vrptw(cls, n: int = 25, seed: int = 0, capacity: float = 20.0,
+                     horizon: float = 3600.0, width: float = 1200.0) -> "Instance":
+        """Instance VRPTW synthétique : fenêtre de temps de largeur fixe par client."""
+        rng = np.random.default_rng(seed)
+        lat = rng.uniform(5.28, 5.40, n)
+        lon = rng.uniform(-4.08, -3.94, n)
+        demand = np.concatenate([[0.0], rng.integers(1, 5, n - 1).astype(float)])
+        start = rng.uniform(0, max(1.0, horizon - width), n)
+        start[0] = 0.0
+        tw = np.column_stack([start, np.minimum(start + width, horizon)])
+        service = np.concatenate([[0.0], rng.integers(60, 300, n - 1).astype(float)])
+        # 120 s/km : vitesse urbaine moyenne de 30 km/h, pour des horaires cohérents
+        travel = np.round(haversine_matrix(lat, lon) * 120.0, 1)
+        return cls(
+            name=f"vrptw_{n}",
+            lat=lat,
+            lon=lon,
+            demand=demand,
+            capacity=capacity,
+            matrix=travel,
+            tw=tw,
+            service=service,
+            cost_unit="s",
+            source="synthétique VRPTW (seed=%d)" % seed,
+        )
