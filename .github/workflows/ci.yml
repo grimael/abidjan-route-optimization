@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Installer les dépendances
+        run: pip install -r requirements.txt
+      - name: Tests du noyau
+        run: |
+          python tests/test_solvers.py
+          python tests/test_data.py
+          python tests/test_cvrp.py
+          python tests/test_vrptw.py
+          python tests/test_map.py
+      - name: Vérifier que l'instance versionnée se charge
+        run: |
+          python - <<'PY'
+          import json, pathlib
+          p = pathlib.Path("data/instances/abidjan_communes_12.json")
+          if p.exists():
+              d = json.loads(p.read_text(encoding="utf-8"))
+              n = len(d["points"])
+              assert len(d["durations"]) == n, "matrice de taille incorrecte"
+              print(f"instance OK : {n} points")
+          else:
+              print("instance absente — générer avec : make data")
+          PY
