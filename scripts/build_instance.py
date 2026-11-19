@@ -128,7 +128,7 @@ def overpass_pois(amenity: str, limit: int) -> list[dict]:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Construit une instance réelle pour Abidjan")
-    ap.add_argument("--out", default="data/instances/abidjan_communes_12.json")
+    ap.add_argument("--out", default=None, help="chemin de sortie (deduit du mode si omis)")
     ap.add_argument("--poi", default=None, help="type OSM : pharmacy, marketplace, hospital…")
     ap.add_argument("--quartiers", action="store_true", help="quartiers et communes d'Abidjan")
     ap.add_argument("--limit", type=int, default=12)
@@ -160,7 +160,8 @@ def main() -> None:
         "durations": np.round(np.array(durations, dtype=float), 1).tolist(),
         "distances": np.round(np.array(distances, dtype=float), 1).tolist(),
     }
-    out = Path(args.out)
+    # nom de fichier deduit du mode : evite d'ecraser l'instance des communes
+    out = Path(args.out) if args.out else Path("data/instances") / f"{name}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"Écrit : {out} ({len(points)} points)")
