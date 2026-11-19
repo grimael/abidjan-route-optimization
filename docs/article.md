@@ -45,16 +45,18 @@ Chaque métaheuristique est exécutée sur plusieurs graines ; nous rapportons l
 
 ## 5. Résultats
 
-### 5.1 TSP sur instance synthétique (12 points)
+### 5.1 TSP sur le réseau réel : l'AG atteint l'optimum
 
-| Solveur | Coût | Écart à l'optimum |
-|---|---|---|
-| Plus proche voisin | 49,5 | +6,5 % |
-| 2-opt / Or-opt | 46,5 | 0,0 % |
-| AG mémétique | 46,5 | 0,0 % |
-| Held-Karp (exact) | 46,5 | référence |
+Instance des douze communes, temps de trajet OSRM. Held-Karp donne l'optimum exact, ce qui permet de mesurer chaque heuristique sans ambiguïté.
 
-Sur douze points, la recherche locale suffit : l'AG n'apporte rien qu'un polish ne trouve déjà. Ce résultat négatif est instructif — il justifie de réserver la métaheuristique aux instances où la recherche locale plafonne.
+| Solveur | Coût (s) | Écart à l'optimum | Temps |
+|---|---|---|---|
+| Plus proche voisin | 10 522 | +17,8 % | < 0,01 s |
+| 2-opt / Or-opt | 9 114 | +2,0 % | < 0,01 s |
+| AG mémétique (5 graines) | **8 936** | **0,0 %** | 0,7 s |
+| Held-Karp (exact) | 8 936 | référence | 0,07 s |
+
+L'AG retrouve l'optimum sur les cinq graines (moyenne 8 971,6 s, écart-type 71,2 s), mais la recherche locale seule est déjà à 2 % : sur douze points, la métaheuristique sert à garantir la qualité, pas à la produire. Ce résultat négatif est instructif — il justifie de réserver l'AG aux instances où la descente de voisinage plafonne, ce qui n'est pas le cas ici.
 
 ### 5.2 CVRP : l'ALNS domine la construction
 
