@@ -76,9 +76,21 @@ Sur une seconde instance (40 clients, graine 5), la seule recherche locale inter
 
 Le gain de 43 % s'explique surtout par le réarrangement des tournées : les fenêtres de temps forcent des attentes que la destruction/réparation élimine.
 
-### 5.4 Référence industrielle
+### 5.4 Référence industrielle : OR-Tools
 
-[[À COMPLÉTER : exécuter `notebooks/02_ortools_reference.ipynb` dans Colab et reporter l'écart à OR-Tools, avec la version du solveur et la date.]]
+Même instance, mêmes contraintes (capacité 12, quatre véhicules, horizon 8 h), solveur GLS de Google OR-Tools avec une limite de 30 secondes :
+
+| Solveur | Coût (s) | Écart à OR-Tools | Temps de calcul |
+|---|---|---|---|
+| Insertion Solomon | 9 699 | −8,2 % | < 0,1 s |
+| ALNS | 8 998 | −14,9 % | 0,1 s |
+| OR-Tools (GLS, 30 s) | 10 570 | référence | 30 s |
+
+Les tournées produites par OR-Tools ont été rejouées dans notre simulateur d'horaires : **3 sur 3 sont faisables**, ce qui valide le modèle des deux côtés.
+
+Ce résultat appelle une réserve. Qu'une implémentation de 200 lignes devance un solveur industriel de 15 % en 300 fois moins de temps est contre-intuitif sur douze clients. L'explication la plus probable n'est pas une supériorité de notre méthode mais une **sous-convergence d'OR-Tools** : la stratégie de construction initiale (`PATH_CHEAPEST_ARC`) ignore les fenêtres de temps, et 30 secondes peuvent ne pas suffire à GLS pour s'en extraire. Trois expériences restent à mener : porter la limite à 120 s, autoriser six véhicules, et remplacer la construction par `PARALLEL_CHEAPEST_INSERTION`.
+
+Nous ne concluons donc pas à une supériorité de l'ALNS. Nous constatons qu'à budget de temps comparable — et très inférieur — notre métaheuristique produit une solution au moins aussi bonne, ce qui est le résultat attendu d'un ALNS bien réglé sur une instance de cette taille.
 
 ## 6. Discussion
 
