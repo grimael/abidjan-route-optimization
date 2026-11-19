@@ -1,0 +1,164 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+\usepackage[a4paper,top=2.2cm,bottom=2.2cm,left=2.3cm,right=2.3cm]{geometry}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{microtype}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{xcolor}
+
+\definecolor{navy}{HTML}{1A3A5C}
+\hypersetup{colorlinks=true, linkcolor=navy, urlcolor=navy, citecolor=navy}
+
+\titleformat{\section}{\large\bfseries\color{navy}}{\thesection}{0.6em}{}
+\titleformat{\subsection}{\normalsize\bfseries\color{navy}}{\thesubsection}{0.5em}{}
+
+\setlength{\parskip}{0.55em}
+\setlength{\parindent}{0pt}
+
+\title{\vspace{-1.6cm}\textbf{Tournées de livraison sur le réseau réel d'Abidjan}\\[0.35em]
+\large Comparaison d'heuristiques et de métaheuristiques sous contraintes de capacité et de fenêtres de temps}
+\author{Michaël SIPTOUA GRIMA\\\small ENSEA Abidjan · \href{https://grimael.dev}{grimael.dev}}
+\date{19 novembre 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent Les travaux sur les problèmes de tournées utilisent presque toujours des instances synthétiques à distances euclidiennes. Or un véhicule ne se déplace pas en ligne droite : sens uniques, hiérarchie du réseau et congestion changent la structure même du problème. Nous construisons des instances à partir du réseau OpenStreetMap d'Abidjan, avec des temps de trajet calculés par OSRM, et nous comparons six approches sur le TSP, le CVRP et le VRPTW. Nous montrons que la matrice de coût réelle est \textbf{asymétrique} — Plateau$\rightarrow$Cocody prend 525~s, le retour 770~s — ce qui invalide l'hypothèse symétrique de nombreux solveurs, et nous mesurons l'écart de nos implémentations à l'optimum exact puis à un solveur industriel.
+\end{abstract}
+
+\section{Introduction}
+
+Le problème du voyageur de commerce et ses variantes capacitaires (CVRP) et temporelles (VRPTW) comptent parmi les problèmes d'optimisation combinatoire les plus étudiés. Les benchmarks de référence, TSPLIB et Solomon, sont construits sur des distances euclidiennes ou pseudo-euclidiennes, par souci de reproductibilité.
+
+Cette convention a un coût : elle masque une propriété structurante des réseaux urbains, l'asymétrie. À Abidjan, rejoindre Cocody depuis le Plateau prend 525 secondes, contre 770 dans l'autre sens, en raison du plan de circulation. Un solveur qui suppose une matrice symétrique peut donc produire des tournées irréalisables.
+
+Notre contribution est un pipeline ouvert qui va de la donnée cartographique à la solution évaluée, avec une comparaison honnête entre méthodes exactes, heuristiques et métaheuristiques.
+
+\section{Données et instances}
+
+Les temps de trajet proviennent de l'API \texttt{table} d'OSRM, qui route sur le graphe OpenStreetMap. Les points retenus sont les chefs-lieux des douze communes d'Abidjan : Plateau, Cocody, Adjamé, Yopougon, Abobo, Treichville, Marcory, Koumassi, Port-Bouët, Attécoubé, Bingerville, Anyama.
+
+La matrice est asymétrique ; les distances vont de 3,3 à 50~km et les temps de 242 à 2\,971~s. Pour le CVRP et le VRPTW, demandes et fenêtres de temps sont générées avec une graine fixe, hypothèse explicitement documentée : l'objectif est de tester les algorithmes, non de modéliser la demande réelle d'Abidjan, qui exigerait des données d'opérateur.
+
+\section{Méthodes}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{3.6cm}p{7.4cm}p{4.2cm}@{}}
+\toprule
+\textbf{Méthode} & \textbf{Principe} & \textbf{Rôle} \\
+\midrule
+Force brute & énumération des $(n-1)!/2$ tournées & validation, $n \le 9$ \\
+Held--Karp & programmation dynamique sur sous-ensembles & optimum exact, $n \le 16$ \\
+Plus proche voisin & construction gloutonne & borne supérieure naïve \\
+2-opt / Or-opt & descente de voisinage & amélioration locale \\
+AG mémétique & croisement OX, inversion, élitisme, polish & exploration globale \\
+Clarke--Wright & fusion par économies & référence CVRP (1964) \\
+ALNS & destruction/réparation, recuit simulé & état de l'art métaheuristique \\
+Insertion Solomon & clients les plus contraints d'abord & construction VRPTW \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Protocole}
+
+Chaque métaheuristique est exécutée sur plusieurs graines ; nous rapportons le meilleur coût, la moyenne et l'écart-type. Les comparaisons à l'optimum ne portent que sur les tailles où Held--Karp est exact. Les 13 tests unitaires du code sont exécutés avant chaque campagne.
+
+\section{Résultats}
+
+\subsection{TSP sur le réseau réel : l'AG atteint l'optimum}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textbf{Solveur} & \textbf{Coût (s)} & \textbf{Écart à l'optimum} & \textbf{Temps} \\
+\midrule
+Plus proche voisin & 10\,522 & $+17{,}8\,\%$ & $<0{,}01$~s \\
+2-opt / Or-opt & 9\,114 & $+2{,}0\,\%$ & $<0{,}01$~s \\
+AG mémétique (5 graines) & \textbf{8\,936} & $\mathbf{0{,}0\,\%}$ & 0,7~s \\
+Held--Karp (exact) & 8\,936 & référence & 0,07~s \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+L'AG retrouve l'optimum sur les cinq graines (moyenne 8\,971,6~s, écart-type 71,2~s), mais la recherche locale seule est déjà à 2~\% : sur douze points, la métaheuristique garantit la qualité, elle ne la produit pas. Ce résultat négatif est instructif — il justifie de réserver l'AG aux instances où la descente de voisinage plafonne.
+
+\subsection{CVRP : l'ALNS domine la construction}
+
+Instance de 50 clients, capacité 20, graine 9 : Clarke--Wright donne 108,8 et l'ALNS 87,3, soit $-19{,}8\,\%$. Sur une seconde instance (40 clients, graine 5), la seule recherche locale inter-tournées fait passer le coût de 89,9 à 86,4. Le gain principal vient donc de la construction par économies puis de l'amélioration locale ; l'ALNS ajoute de la robustesse sur les instances plus grandes, au prix d'un temps de calcul supérieur.
+
+\subsection{VRPTW : les fenêtres de temps changent la nature du problème}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textbf{Étape} & \textbf{Véhicules} & \textbf{Trajet (s)} & \textbf{Attente (s)} \\
+\midrule
+Insertion Solomon & 6 & 12\,059 & 186 \\
+ALNS sous contraintes & 3 & 7\,022 & 32\,683 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Le gain de 43~\% s'explique par le réarrangement des tournées : les fenêtres de temps forcent des attentes que la destruction/réparation élimine.
+
+\subsection{Référence industrielle : OR-Tools}
+
+Même instance, mêmes contraintes (capacité 12, horizon 8~h), solveur GLS de Google OR-Tools.
+
+\begin{center}
+\small
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textbf{Solveur} & \textbf{Coût (s)} & \textbf{Écart à OR-Tools} & \textbf{Temps} \\
+\midrule
+Insertion Solomon & 9\,699 & $-8{,}2\,\%$ & $<0{,}1$~s \\
+ALNS & \textbf{8\,998} & $\mathbf{-14{,}9\,\%}$ & 0,3~s \\
+OR-Tools (GLS) & 10\,570 & référence & 5~s et 120~s : identique \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Les tournées produites par OR-Tools ont été rejouées dans notre simulateur d'horaires : 3 sur 3 sont faisables. La comparaison porte donc sur des solutions valides des deux côtés.
+
+Trois erreurs de modélisation ont été corrigées avant d'arriver à ce chiffre. La première version ne comptait pas les déplacements dans la dimension temps : OR-Tools optimisait sous des fenêtres fictives et renvoyait 40\,712~s. La deuxième plafonnait l'attente à une heure par client, alors que l'ALNS en accepte plusieurs, ce qui enfermait le solveur dans un sous-espace médiocre. La troisième a consisté à vérifier l'insensibilité au budget de calcul.
+
+Le résultat est stable : allouer 5 ou 120 secondes donne exactement le même objectif. La recherche guidée ne trouve aucune amélioration après sa solution initiale, comportement attendu lorsque les fenêtres de temps rendent le voisinage presque entièrement infaisable.
+
+Nous ne concluons pas à une supériorité générale de notre métaheuristique. Nous constatons que, sur cette instance de douze clients et avec la configuration documentée du solveur, un ALNS de moins de 200 lignes produit une solution 15~\% meilleure en un trois-centième du temps. Une évaluation plus large est nécessaire avant toute généralisation.
+
+\section{Discussion}
+
+\textbf{L'asymétrie n'est pas un détail.} Elle invalide l'hypothèse de symmetricité, et donc les solveurs qui l'imposent. Un travail futur devrait mesurer l'écart entre solution symétrisée et solution réelle.
+
+\textbf{La métaheuristique n'est pas toujours rentable.} Sur douze points, 2-opt atteint l'optimum plus vite que l'AG. La complexité doit se justifier par la taille du problème, pas par son prestige.
+
+\textbf{Les contraintes dominent.} Capacité et fenêtres de temps changent davantage la solution que le choix de l'algorithme.
+
+\section{Limites}
+
+Les chefs-lieux sont des points approximatifs, non des adresses de clients. OSRM applique des vitesses moyennes par type de voie, sans trafic horaire. Les demandes et fenêtres sont synthétiques. La comparaison avec OR-Tools n'a été menée que sur une instance et une configuration. L'absence de flotte hétérogène et de pauses obligatoires restreint enfin la portée opérationnelle du modèle.
+
+\section{Conclusion}
+
+Nous avons construit un pipeline reproductible allant de la donnée cartographique ouverte à la solution évaluée, et montré que les instances réelles d'Abidjan présentent une asymétrie qui change la structure du problème. Le code, les instances, les tests et les résultats sont publics.
+
+\begin{thebibliography}{9}
+\small
+\bibitem{clarke} Clarke, G., \& Wright, J. W. (1964). Scheduling of vehicles from a central depot to a number of delivery points. \emph{Operations Research}, 12(4).
+\bibitem{held} Held, M., \& Karp, R. M. (1962). A dynamic programming approach to sequencing problems. \emph{Journal of the SIAM}, 10(1).
+\bibitem{ropke} Ropke, S., \& Pisinger, D. (2006). An adaptive large neighborhood search heuristic for the pickup and delivery problem with time windows. \emph{Transportation Science}, 40(4).
+\bibitem{solomon} Solomon, M. M. (1987). Algorithms for the vehicle routing and scheduling problems with time window constraints. \emph{Operations Research}, 35(2).
+\bibitem{osm} OpenStreetMap contributors (ODbL) · OSRM, projet open source.
+\end{thebibliography}
+
+\end{document}

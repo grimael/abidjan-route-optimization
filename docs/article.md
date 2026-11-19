@@ -80,19 +80,21 @@ Le gain de 43 % s'explique surtout par le réarrangement des tournées : les fen
 
 ### 5.4 Référence industrielle : OR-Tools
 
-Même instance, mêmes contraintes (capacité 12, quatre véhicules, horizon 8 h), solveur GLS de Google OR-Tools avec une limite de 30 secondes :
+Même instance, mêmes contraintes (capacité 12, horizon 8 h), solveur GLS de Google OR-Tools :
 
 | Solveur | Coût (s) | Écart à OR-Tools | Temps de calcul |
 |---|---|---|---|
 | Insertion Solomon | 9 699 | −8,2 % | < 0,1 s |
-| ALNS | 8 998 | −14,9 % | 0,1 s |
-| OR-Tools (GLS, 30 s) | 10 570 | référence | 30 s |
+| ALNS | 8 998 | −14,9 % | 0,3 s |
+| OR-Tools (GLS) | 10 570 | référence | 5 s et 120 s : **identique** |
 
-Les tournées produites par OR-Tools ont été rejouées dans notre simulateur d'horaires : **3 sur 3 sont faisables**, ce qui valide le modèle des deux côtés.
+Les tournées produites par OR-Tools ont été rejouées dans notre simulateur d'horaires : **3 sur 3 sont faisables**. La comparaison porte donc bien sur des solutions valides des deux côtés.
 
-Ce résultat appelle une réserve. Qu'une implémentation de 200 lignes devance un solveur industriel de 15 % en 300 fois moins de temps est contre-intuitif sur douze clients. L'explication la plus probable n'est pas une supériorité de notre méthode mais une **sous-convergence d'OR-Tools** : la stratégie de construction initiale (`PATH_CHEAPEST_ARC`) ignore les fenêtres de temps, et 30 secondes peuvent ne pas suffire à GLS pour s'en extraire. Trois expériences restent à mener : porter la limite à 120 s, autoriser six véhicules, et remplacer la construction par `PARALLEL_CHEAPEST_INSERTION`.
+**Trois erreurs de modélisation ont été corrigées avant d'arriver à ce chiffre.** La première version de notre modèle OR-Tools ne comptait pas les déplacements dans la dimension temps : il optimisait sous des fenêtres fictives et renvoyait 40 712 s. La deuxième plafonnait l'attente à une heure par client, alors que notre ALNS accepte des attentes de plusieurs heures, ce qui enfermait OR-Tools dans un sous-espace médiocre. La troisième a consisté à vérifier l'insensibilité au budget de calcul.
 
-Nous ne concluons donc pas à une supériorité de l'ALNS. Nous constatons qu'à budget de temps comparable — et très inférieur — notre métaheuristique produit une solution au moins aussi bonne, ce qui est le résultat attendu d'un ALNS bien réglé sur une instance de cette taille.
+**Le résultat est stable et reproductible :** allouer 5 ou 120 secondes donne exactement le même objectif, 10 570 s. La recherche guidée ne trouve donc aucune amélioration après sa solution initiale — comportement attendu lorsque les fenêtres de temps rendent le voisinage presque entièrement infaisable : déplacer un client casse la faisabilité dans la majorité des cas.
+
+Nous ne concluons pas à une supériorité générale de notre métaheuristique. Nous constatons que, sur cette instance de 12 clients et avec la configuration documentée du solveur, un ALNS de moins de 200 lignes produit une solution 15 % meilleure en un trois-centième du temps. Une évaluation plus large — plusieurs tailles, plusieurs configurations, plusieurs solveurs — est nécessaire avant toute généralisation.
 
 ## 6. Discussion
 

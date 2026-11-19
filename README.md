@@ -51,6 +51,8 @@ python scripts/build_instance.py --poi pharmacy --limit 40 --out data/instances/
 
 Overpass sature régulièrement : le script essaie trois miroirs avec backoff exponentiel.
 
+**Article** : [Tournées de livraison sur le réseau réel d'Abidjan](docs/article.pdf) — 4 pages, résultats et limites.
+
 ## Structure
 
 ```
