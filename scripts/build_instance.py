@@ -27,8 +27,8 @@ import requests
 
 OSRM = "https://router.project-osrm.org/table/v1/driving/"
 OVERPASS_ENDPOINTS = [
+    "https://maps.mail.ru/osm/tools/overpass/api/interpreter",  # miroir le plus disponible
     "https://overpass-api.de/api/interpreter",
-    "https://overpass.kumi.systems/api/interpreter",
     "https://overpass.private.coffee/api/interpreter",
 ]
 
@@ -74,6 +74,33 @@ def osrm_table(points: list[dict]) -> tuple[list, list]:
     return data["durations"], data["distances"]
 
 
+def overpass_quartiers(limit: int) -> list[dict]:
+    """Quartiers et communes d'Abidjan (place=suburb|neighbourhood|quarter)."""
+    query = f"""
+    [out:json][timeout:60];
+    node["place"~"suburb|neighbourhood|quarter"](5.25,-4.12,5.45,-3.88);
+    out center {limit * 2};
+    """
+    for endpoint in OVERPASS_ENDPOINTS:
+        try:
+            data = _get(endpoint, {"data": query}, tries=2)
+            seen, out = set(), []
+            for el in data.get("elements", []):
+                tags = el.get("tags", {})
+                name = tags.get("name")
+                if not name or name in seen or "lat" not in el:
+                    continue
+                seen.add(name)
+                out.append({"name": name, "lat": el["lat"], "lon": el["lon"]})
+                if len(out) >= limit:
+                    break
+            if out:
+                return out
+        except Exception as exc:  # noqa: BLE001
+            print(f"  {endpoint} indisponible : {exc}", file=sys.stderr)
+    raise RuntimeError("aucun serveur Overpass n'a répondu")
+
+
 def overpass_pois(amenity: str, limit: int) -> list[dict]:
     """Récupère de vrais points d'intérêt à Abidjan via Overpass."""
     query = f"""
@@ -100,10 +127,16 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Construit une instance réelle pour Abidjan")
     ap.add_argument("--out", default="data/instances/abidjan_communes_12.json")
     ap.add_argument("--poi", default=None, help="type OSM : pharmacy, marketplace, hospital…")
+    ap.add_argument("--quartiers", action="store_true", help="quartiers et communes d'Abidjan")
     ap.add_argument("--limit", type=int, default=12)
     args = ap.parse_args()
 
-    if args.poi:
+    if args.quartiers:
+        print(f"Récupération de {args.limit} quartiers via Overpass…")
+        points = overpass_quartiers(args.limit)
+        name = f"abidjan_quartiers_{len(points)}"
+        source = f"OpenStreetMap (place=suburb/neighbourhood) + OSRM, {time.strftime('%Y-%m-%d')}"
+    elif args.poi:
         print(f"Récupération des POI « {args.poi} » via Overpass…")
         points = overpass_pois(args.poi, args.limit)
         name = f"abidjan_{args.poi}_{len(points)}"

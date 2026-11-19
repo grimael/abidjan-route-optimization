@@ -53,6 +53,17 @@ Overpass sature régulièrement : le script essaie trois miroirs avec backoff ex
 
 **Article** : [Tournées de livraison sur le réseau réel d'Abidjan](docs/article.pdf) — 4 pages, résultats et limites.
 
+## Figures
+
+| | |
+|---|---|
+| ![Tournée optimale](docs/figures/tournee_optimale.png) | ![Convergence](docs/figures/convergence.png) |
+| Tournée optimale sur le réseau OSRM | Convergence de l'AG sur cinq graines |
+| ![CVRP](docs/figures/tournees_cvrp.png) | ![Comparaison](docs/figures/comparaison.png) |
+| Tournées CVRP (ALNS) | Coût selon la méthode |
+
+Régénérer : `python scripts/figures.py --instance data/instances/abidjan_communes_12.json`
+
 ## Structure
 
 ```
