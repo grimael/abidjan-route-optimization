@@ -1,92 +1,92 @@
-# Optimisation de tournées à Abidjan par algorithme génétique
+# Abidjan Route Optimization
 
-**Un problème du voyageur de commerce (TSP) résolu par algorithme génétique, avec comparaison de cinq opérateurs de sélection.**
+**Optimisation de tournées sur le réseau routier réel d'Abidjan.**
 
-Projet académique — ENSEA Abidjan · Python · Jupyter Notebook
+Ce projet ne simule plus des villes au hasard : il travaille sur les **temps de trajet réels** entre les communes d'Abidjan, calculés par OSRM sur le réseau OpenStreetMap. Il compare des solveurs — heuristique gloutonne, recherche locale, algorithme génétique mémétique — et mesure l'écart à l'optimum exact quand la taille le permet.
 
----
+| | |
+|---|---|
+| **Problème** | TSP, puis CVRP avec fenêtres de temps |
+| **Données** | OpenStreetMap + OSRM, chefs-lieux des 12 communes d'Abidjan |
+| **Métrique** | Durée de trajet (secondes), matrice **asymétrique** |
+| **Solveurs** | Plus proche voisin · 2-opt/Or-opt · AG mémétique · Held-Karp (optimum) |
+| **Tests** | 7 tests, exécutables sans dépendance lourde |
 
-## Le problème
+## Pourquoi ce projet n'est pas un exercice
 
-Une tournée de livraison doit passer par un ensemble de points et revenir au départ en
-minimisant la distance totale. C'est le problème du voyageur de commerce : dès quelques
-dizaines de villes, l'énumération exhaustive devient impossible — le nombre de tournées
-croît en factorielle du nombre de points.
+La version initiale générait quinze points aléatoires et calculait des distances euclidiennes. Aucune route, aucun client, aucune référence. Ici :
 
-Les algorithmes génétiques abordent ce problème sans garantie d'optimalité, mais avec une
-propriété utile : ils trouvent de bonnes solutions en un temps raisonnable, et leur
-comportement se lit dans les courbes de convergence.
+- les points sont les **chefs-lieux réels des communes** d'Abidjan ;
+- la matrice vient d'**OSRM**, qui route sur le graphe OSM et respecte les sens uniques — Plateau → Cocody prend 525 s, le retour 770 s ;
+- chaque résultat est comparé à l'**optimum exact** (Held-Karp) sur les petites instances, ce qui permet de dire « à 0,4 % de l'optimum » au lieu de « la courbe monte ».
 
-## L'approche
-
-Chaque individu de la population est une tournée complète, encodée comme une permutation
-des points à visiter. Le fitness est l'inverse de la distance totale : plus la tournée est
-courte, plus le score est élevé.
-
-Le cœur du projet est la **comparaison de cinq opérateurs de sélection**, qui déterminent
-quels parents se reproduisent et donc comment la population converge :
-
-| Opérateur | Principe | Effet observé |
-|---|---|---|
-| Roulette | Probabilité proportionnelle au fitness | Diversité forte, convergence lente |
-| Rang | Probabilité fondée sur le classement, pas sur la valeur brute | Compromis stable |
-| Échantillonnage stochastique universel (SUS) | Pointeurs régulièrement espacés sur la roue cumulée | Proportionnel, moins bruité que la roulette |
-| Élitiste | Sélection systématique du meilleur individu | Convergence rapide, risque d'optimum local |
-| Troncature | Tirage aléatoire parmi les k % meilleurs | Pression sélective forte |
-
-La théorie de chaque opérateur — avantages, inconvénients, exemple chiffré — est détaillée
-dans **[methodes.md](methodes.md)**. Le code complet est dans **[code.ipynb](code.ipynb)**.
-
-## Résultats
-
-**Évolution du fitness au fil des générations**
-
-![Courbe d'évolution du fitness](fitness_evolution.png)
-
-**Meilleure tournée trouvée**
-
-![Solution TSP](tsp_solution.png)
-
-**Population au fil des générations** — la diversité des tournées candidates se réduit à
-mesure que la sélection opère :
-
-| Génération 0 | Génération 100 | Génération 300 | Génération 500 |
-|---|---|---|---|
-| ![Génération 0](route_gen_0.png) | ![Génération 100](route_gen_100.png) | ![Génération 300](route_gen_300.png) | ![Génération 500](route_gen_500.png) |
-
-Les figures de génération intermédiaire (`route_gen_100`, `200`, `400`) sont également
-disponibles dans le dépôt.
-
-## Lancer le projet
-
-Le projet tient dans un notebook, sans dépendance exotique :
+## Démarrage
 
 ```bash
-pip install numpy matplotlib jupyter
-jupyter notebook code.ipynb
+python -m venv .venv
+.venv\Scripts\activate          # Linux/macOS : source .venv/bin/activate
+pip install -r requirements.txt
+
+# 1. Construire l'instance réelle (appels OSRM, ~2 s)
+python scripts/build_instance.py --out data/instances/abidjan_communes_12.json
+
+# 2. Comparer les solveurs
+python scripts/benchmark.py --instance data/instances/abidjan_communes_12.json --seeds 5
+
+# 3. Tests
+python tests/test_solvers.py
+python tests/test_data.py
 ```
 
-L'exécution complète produit les figures présentes dans ce dépôt. Pour tester un autre
-opérateur de sélection, remplacer l'appel dans la fonction `genetic_algorithm` par
-`roulette_selection`, `rank_selection`, `sus_selection`, `elitist_selection` ou
-`truncation_selection`.
+Pour des points d'intérêt réels (pharmacies, marchés, hôpitaux) plutôt que des chefs-lieux :
+
+```bash
+python scripts/build_instance.py --poi pharmacy --limit 40 --out data/instances/abidjan_pharmacies_40.json
+```
+
+Overpass sature régulièrement : le script essaie trois miroirs avec backoff exponentiel.
 
 ## Structure
 
 ```
-├── code.ipynb            # Implémentation complète : encodage, fitness, sélection, croisement, mutation
-├── methodes.md           # Les cinq opérateurs de sélection, expliqués et comparés
-├── fitness_evolution.png # Convergence du fitness
-├── tsp_solution.png      # Meilleure tournée
-└── route_gen_*.png       # Population à différentes générations
+src/vrp/
+  instance.py          # modèle d'instance, distances haversine
+  data/
+    load.py            # lecture/écriture JSON des instances
+  solvers/
+    exact.py           # force brute, Held-Karp (optimum)
+    heuristics.py      # plus proche voisin, 2-opt, Or-opt, descente
+    ga.py              # AG mémétique (OX, inversion, élitisme)
+scripts/
+  build_instance.py    # OSRM + Overpass → JSON
+  benchmark.py         # comparaison des solveurs
+notebooks/
+  01_baseline_ga.ipynb # notebook d'origine, conservé pour l'historique
+docs/
+  methodes_selection.md # théorie des cinq opérateurs de sélection
 ```
 
-## Limites
+## Résultats reproductibles
 
-- L'instance est de taille modeste : le résultat illustre le comportement des opérateurs,
-  il ne prétend pas résoudre un cas industriel.
-- Un algorithme génétique ne garantit pas l'optimum ; la qualité de la solution dépend de
-  la graine aléatoire et des paramètres (taille de population, taux de mutation).
-- La comparaison entre opérateurs est ici qualitative, appuyée sur les courbes. Une
-  évaluation rigoureuse demanderait plusieurs exécutions par opérateur, une moyenne et un
-  écart-type sur la distance finale.
+Chaque exécution fixe sa graine. Le banc d'essai répète l'AG sur plusieurs graines et rapporte moyenne et écart-type, au lieu d'une courbe unique.
+
+```bash
+python scripts/benchmark.py --instance data/instances/abidjan_communes_12.json --seeds 10 --json-out results/bench_communes.json
+```
+
+## Limites assumées
+
+- Les chefs-lieux sont des points approximatifs : ce sont des centres de commune, pas des adresses de clients.
+- OSRM public applique des vitesses moyennes par type de voie, pas le trafic réel d'Abidjan à 17 h.
+- Held-Karp plafonne à 16 points ; au-delà, la référence devient OR-Tools (à exécuter dans Colab, l'installation locale étant bloquée sur certaines machines).
+- Le CVRP et les fenêtres de temps sont la prochaine étape, pas encore implémentés.
+
+## Sources et licences
+
+- Données cartographiques : © contributeurs OpenStreetMap, licence **ODbL**.
+- Routage : serveur public OSRM (usage raisonnable, pas de production).
+- Code : licence MIT.
+
+## Auteur
+
+Michaël SIPTOUA GRIMA — [grimael.dev](https://grimael.dev) · [GitHub](https://github.com/grimael)

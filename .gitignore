@@ -1,0 +1,39 @@
+# Environnements virtuels
+grim/
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+.ruff_cache/
+.mypy_cache/
+
+# Données lourdes et caches (regénérables par les scripts)
+data/raw/
+data/cache/
+*.graphml
+*.osm.pbf
+*.gpkg
+
+# Sorties d'exécution
+outputs/
+results/*.csv
+results/*.json
+!results/.gitkeep
+
+# Système
+.DS_Store
+Thumbs.db
+
+# Éditeurs
+.vscode/
+.idea/
+
+# Residus de pip (permissions restreintes sous Windows)
+.tmp/
+
