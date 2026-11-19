@@ -97,3 +97,13 @@ class Instance:
         lat = rng.uniform(5.30, 5.42, n)
         lon = rng.uniform(-4.08, -3.95, n)
         return cls(name=name, lat=lat, lon=lon, source="aléatoire (seed=%d)" % seed)
+
+    @classmethod
+    def random_cvrp(cls, n: int = 30, seed: int = 42, capacity: float = 20.0, name: str = "random_cvrp") -> "Instance":
+        """Instance CVRP synthétique : demande entière 1..5 par client."""
+        rng = np.random.default_rng(seed)
+        lat = rng.uniform(5.28, 5.40, n)
+        lon = rng.uniform(-4.08, -3.94, n)
+        demand = np.concatenate([[0.0], rng.integers(1, 6, n - 1).astype(float)])
+        return cls(name=name, lat=lat, lon=lon, demand=demand, capacity=capacity,
+                   source="synthétique (seed=%d)" % seed)

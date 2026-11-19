@@ -6,11 +6,11 @@ Ce projet ne simule plus des villes au hasard : il travaille sur les **temps de 
 
 | | |
 |---|---|
-| **Problème** | TSP, puis CVRP avec fenêtres de temps |
+| **Problème** | TSP et **CVRP** (capacité), tournées multi-véhicules |
 | **Données** | OpenStreetMap + OSRM, chefs-lieux des 12 communes d'Abidjan |
 | **Métrique** | Durée de trajet (secondes), matrice **asymétrique** |
-| **Solveurs** | Plus proche voisin · 2-opt/Or-opt · AG mémétique · Held-Karp (optimum) |
-| **Tests** | 7 tests, exécutables sans dépendance lourde |
+| **Solveurs** | Plus proche voisin · 2-opt/Or-opt · AG mémétique · Clarke-Wright · ALNS · Held-Karp (optimum) |
+| **Tests** | 10 tests, exécutables sans dépendance lourde |
 
 ## Pourquoi ce projet n'est pas un exercice
 
@@ -33,9 +33,14 @@ python scripts/build_instance.py --out data/instances/abidjan_communes_12.json
 # 2. Comparer les solveurs
 python scripts/benchmark.py --instance data/instances/abidjan_communes_12.json --seeds 5
 
-# 3. Tests
+# 3. Carte interactive (Leaflet + tuiles OpenStreetMap)
+python scripts/make_map.py --instance data/instances/abidjan_communes_12.json --out results/carte.html
+
+# 4. Tests
 python tests/test_solvers.py
 python tests/test_data.py
+python tests/test_cvrp.py
+python tests/test_map.py
 ```
 
 Pour des points d'intérêt réels (pharmacies, marchés, hôpitaux) plutôt que des chefs-lieux :
@@ -57,9 +62,13 @@ src/vrp/
     exact.py           # force brute, Held-Karp (optimum)
     heuristics.py      # plus proche voisin, 2-opt, Or-opt, descente
     ga.py              # AG mémétique (OX, inversion, élitisme)
+    cvrp.py            # Clarke-Wright, 2-opt inter-tournées, ALNS
+  viz/
+    map.py             # carte Leaflet autonome (aucune dépendance)
 scripts/
   build_instance.py    # OSRM + Overpass → JSON
   benchmark.py         # comparaison des solveurs
+  make_map.py          # carte HTML des tournées
 notebooks/
   01_baseline_ga.ipynb # notebook d'origine, conservé pour l'historique
 docs/
@@ -79,7 +88,7 @@ python scripts/benchmark.py --instance data/instances/abidjan_communes_12.json -
 - Les chefs-lieux sont des points approximatifs : ce sont des centres de commune, pas des adresses de clients.
 - OSRM public applique des vitesses moyennes par type de voie, pas le trafic réel d'Abidjan à 17 h.
 - Held-Karp plafonne à 16 points ; au-delà, la référence devient OR-Tools (à exécuter dans Colab, l'installation locale étant bloquée sur certaines machines).
-- Le CVRP et les fenêtres de temps sont la prochaine étape, pas encore implémentés.
+- Les fenêtres de temps (VRPTW) restent à implémenter : le solveur gère la capacité, pas les horaires.
 
 ## Sources et licences
 

@@ -37,3 +37,7 @@ Thumbs.db
 # Residus de pip (permissions restreintes sous Windows)
 .tmp/
 
+
+# Artefacts de demonstration
+results/*.html
+
